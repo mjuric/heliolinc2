@@ -3,8 +3,6 @@
 // geometry. Includes functions originally developed in orbint02a.cpp,
 // maketrack02b.cpp, projtest01b.cpp, and other places.
 
-using namespace std;
-
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -22,6 +20,8 @@ using namespace std;
 #include <random>
 #include <stdexcept>
 #include <cstdio>
+
+using namespace std;
 
 #define DEGPRAD (180.0L/M_PI) /*Degrees per radian*/
 #define LSQUARE(x) long(x)*long(x)
