@@ -52,11 +52,6 @@ static void show_usage()
   cerr << "set to defaults that may not be what you want.\n";
 }
 
-//int numpy2detvec()
-//{
-//  std::vector<det_OC_index> &detvec
-//}
-
 int readdetfile(const std::string &indetfile, std::vector<det_OC_index> &detvec)
 {
   long double MJD,RA,Dec;
