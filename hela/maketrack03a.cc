@@ -51,6 +51,67 @@ static void show_usage()
   cerr << "Note well that the minimum invocation will leave a bunch of things\n";
   cerr << "set to defaults that may not be what you want.\n";
 }
+
+int readdetfile(const std::string &indetfile, std::vector<det_OC_index> &detvec)
+{
+  long double MJD,RA,Dec;
+  std::string lnfromfile;
+  string idstring;
+  ifstream instream1 {indetfile};
+  int reachedeof = 0;
+  long lct=0;
+
+  if(!instream1) {
+    cerr << "can't open input file " << indetfile << "\n";
+    return(1);
+  }
+  // Skip one-line header
+  getline(instream1,lnfromfile);
+  lct++;
+  cout << lnfromfile << "\n";
+  while(reachedeof==0) {
+    getline(instream1,lnfromfile);
+    lct++;
+    if(!instream1.eof() && !instream1.fail() && !instream1.bad()) ; // Read on.
+    else if(instream1.eof()) reachedeof=1; //End of file, fine.
+    else if(instream1.fail()) reachedeof=-1; //Something wrong, warn
+    else if(instream1.bad()) reachedeof=-2; //Worse problem, warn
+    int i=0;
+    int j = 0;
+    int c='0';
+    while(i<lnfromfile.size() && reachedeof == 0) {
+      string stest;
+      c='0';
+      while(i<lnfromfile.size() && c!=',' && c!='\n' && c!=EOF) {
+	c=lnfromfile[i];
+	if(c!=',' && c!='\n' && c!=EOF) stest.push_back(c);
+	i++;
+      }
+      // We just finished reading something
+      j++;
+      if(j==IDCOL) idstring=stest;
+      if(j==MJDCOL) MJD=stold(stest);
+      else if(j==RACOL) RA=stold(stest);
+      else if(j==DECCOL) Dec=stold(stest);
+      // cout<<"Column "<< j << " read as " << stest << ".\n";
+    }
+    if(reachedeof == 0) {
+      // cout<<"MJD, RA, Dec: " << MJD-floor(MJD) << " " << RA << " " << Dec << "\n";
+      det_OC_index o1(MJD,RA,Dec,0L,0L,0L,idstring,-lct);
+      detvec.push_back(o1);
+    }
+  }
+  if(reachedeof==1) { 
+    cout << "File read successfully to the end.\n";
+  }
+  else if(reachedeof==-1) cout << "Warning: file read failed\n";
+  else if(reachedeof==-2) cout << "Warning: file possibly corrupted\n";
+  else cout << "Warning: unknown file read problem\n";
+  // time-sort the detection vector
+  sort(detvec.begin(), detvec.end(), early_det_OC_index());
+
+  return 0;
+}
     
 int maketrack03a(const std::vector<const std::string> &argv)
 {
@@ -287,56 +348,13 @@ int maketrack03a(const std::vector<const std::string> &argv)
   cout << "maxvel " << maxvel << "\n";
   maxtime/=24.0; /*Unit conversion from hours to days*/
   maxdist = maxtime*maxvel;
-  
-  ifstream instream1 {indetfile};
-  if(!instream1) {
-    cerr << "can't open input file " << indetfile << "\n";
-    return(1);
+
+  // read detections file
+  int ret = readdetfile(indetfile, detvec);
+  if(ret != 0)
+  {
+    return ret;
   }
-  // Skip one-line header
-  getline(instream1,lnfromfile);
-  lct++;
-  cout << lnfromfile << "\n";
-  while(reachedeof==0) {
-    getline(instream1,lnfromfile);
-    lct++;
-    if(!instream1.eof() && !instream1.fail() && !instream1.bad()) ; // Read on.
-    else if(instream1.eof()) reachedeof=1; //End of file, fine.
-    else if(instream1.fail()) reachedeof=-1; //Something wrong, warn
-    else if(instream1.bad()) reachedeof=-2; //Worse problem, warn
-    i=0;
-    j = 0;
-    c='0';
-    while(i<lnfromfile.size() && reachedeof == 0) {
-      string stest;
-      c='0';
-      while(i<lnfromfile.size() && c!=',' && c!='\n' && c!=EOF) {
-	c=lnfromfile[i];
-	if(c!=',' && c!='\n' && c!=EOF) stest.push_back(c);
-	i++;
-      }
-      // We just finished reading something
-      j++;
-      if(j==IDCOL) idstring=stest;
-      if(j==MJDCOL) MJD=stold(stest);
-      else if(j==RACOL) RA=stold(stest);
-      else if(j==DECCOL) Dec=stold(stest);
-      // cout<<"Column "<< j << " read as " << stest << ".\n";
-    }
-    if(reachedeof == 0) {
-      // cout<<"MJD, RA, Dec: " << MJD-floor(MJD) << " " << RA << " " << Dec << "\n";
-      o1=det_OC_index(MJD,RA,Dec,0L,0L,0L,idstring,-lct);
-      detvec.push_back(o1);
-    }
-  }
-  if(reachedeof==1) { 
-    cout << "File read successfully to the end.\n";
-  }
-  else if(reachedeof==-1) cout << "Warning: file read failed\n";
-  else if(reachedeof==-2) cout << "Warning: file possibly corrupted\n";
-  else cout << "Warning: unknown file read problem\n";
-  // time-sort the detection vector
-  sort(detvec.begin(), detvec.end(), early_det_OC_index());
 
   // Get image information.
   if(inimfile.size()>0)
