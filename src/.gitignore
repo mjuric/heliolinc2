@@ -1,0 +1,9 @@
+*.o
+*.dylib
+*.so
+.deps
+
+# binaries
+maketrack03a
+projectpairs04b
+projectpairs04c
