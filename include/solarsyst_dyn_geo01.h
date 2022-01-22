@@ -9,6 +9,7 @@
 #include <sstream>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
 #include <string>
 #include <list>
 #include <forward_list>
@@ -101,9 +102,14 @@ public:
   long double x;
   long double y;
   long double z;
-  string idstring;
+  char idstring[20];	// use a POD type so we can map this to a numpy array
   long index;
-  det_OC_index(long double mjd, long double ra, long double dec, long double x, long double y, long double z, string idstring, long index) :MJD(mjd), RA(ra), Dec(dec), x(x), y(y), z(z), idstring(idstring), index(index) { }
+  det_OC_index(long double mjd, long double ra, long double dec, long double x, long double y, long double z, const string &idstring, long index) :MJD(mjd), RA(ra), Dec(dec), x(x), y(y), z(z), index(index)
+  {
+    assert(idstring.size() < sizeof(this->idstring));
+    std::strncpy(this->idstring, idstring.c_str(), sizeof(this->idstring));
+    this->idstring[sizeof(this->idstring)-1] = 0;
+  }
 };
 
 class xy_index{ // Double-precision x,y point plus long index
@@ -178,14 +184,10 @@ public:
 class early_det_OC_index{
 public:
   inline bool operator() (const det_OC_index& o1, const det_OC_index& o2) {
-    return(o1.MJD < o2.MJD);
-  }
-};
-
-class stringsort_det_OC_index{
-public:
-  inline bool operator() (const det_OC_index& o1, const det_OC_index& o2) {
-    return(o1.idstring < o2.idstring);
+    // the secondary sort on RA is to make the result reasonably deterministic
+    // when there are entries with equal MJDs (as std::sort doesn't guarantee
+    // the ordering of these won't be changed)
+    return (o1.MJD == o2.MJD && o1.RA < o2.RA) || (o1.MJD < o2.MJD);
   }
 };
 
