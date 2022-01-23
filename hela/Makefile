@@ -24,7 +24,7 @@ POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d && touch $@
 
 %.o : %.cc
 %.o : %.cc $(DEPDIR)/%.d | $(DEPDIR)
-	$(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) $(PYINCLUDES) -I../include -std=gnu++17 -c $(OUTPUT_OPTION) $<
+	$(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) $(PYINCLUDES) -I../include -std=gnu++2a -c $(OUTPUT_OPTION) $<
 	$(POSTCOMPILE)
 
 $(DEPDIR): ; @mkdir -p $@

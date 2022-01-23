@@ -92,19 +92,21 @@ public:
   det_index(double mjd, double ra, double dec, long index) :MJD(mjd), RA(ra), Dec(dec), index(index) { }
 };
 
+typedef long double REAL;
+
 class det_OC_index{ // Detection of some astronomical source with
                     // the observer's X, Y, Z coordinates, an index
                     // for cross-referencing, and a string identifier.
 public:
-  long double MJD;
-  long double RA;
-  long double Dec;
-  long double x;
-  long double y;
-  long double z;
+  REAL MJD;
+  REAL RA;
+  REAL Dec;
+  REAL x;
+  REAL y;
+  REAL z;
   char idstring[20];	// use a POD type so we can map this to a numpy array
   long index;
-  det_OC_index(long double mjd, long double ra, long double dec, long double x, long double y, long double z, const string &idstring, long index) :MJD(mjd), RA(ra), Dec(dec), x(x), y(y), z(z), index(index)
+  det_OC_index(REAL mjd, REAL ra, REAL dec, REAL x, REAL y, REAL z, const string &idstring, long index) :MJD(mjd), RA(ra), Dec(dec), x(x), y(y), z(z), index(index)
   {
     assert(idstring.size() < sizeof(this->idstring));
     std::strncpy(this->idstring, idstring.c_str(), sizeof(this->idstring));

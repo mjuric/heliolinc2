@@ -23,7 +23,17 @@
 // crude n^2 pairing based on image matching.
 
 #include "solarsyst_dyn_geo01.h"
-#include "cmath"
+#include <cmath>
+#include <span>
+#include <cstring>
+#include <cstdio>
+
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include <pybind11/numpy.h>
+
+namespace py = pybind11;
+
 #define NUMPOS 3
 
 #define IDCOL 1
@@ -112,13 +122,12 @@ int readdetfile(const std::string &indetfile, std::vector<det_OC_index> &detvec)
 
   return 0;
 }
-    
-int maketrack03a(const std::vector<const std::string> &argv)
+
+int maketrack03a(const std::vector<const std::string> &argv, std::optional<py::array_t<det_OC_index, py::array::c_style>> py_detvec)
 {
   const int argc = argv.size();
 
   det_OC_index o1 = det_OC_index(0L,0L,0L,0L,0L,0L,"null",0);
-  vector <det_OC_index> detvec = {};
   vector <det_OC_index> pairdets = {};
   img_log02 imlog = img_log02(0.0,0.0,0.0,0,0);
   vector <img_log02> img_log = {};
@@ -350,11 +359,25 @@ int maketrack03a(const std::vector<const std::string> &argv)
   maxdist = maxtime*maxvel;
 
   // read detections file
-  int ret = readdetfile(indetfile, detvec);
-  if(ret != 0)
+  vector <det_OC_index> detvec_local = {};
+  det_OC_index *arr = nullptr;
+  size_t arr_len = 0;
+  if(py_detvec.has_value())
   {
-    return ret;
+    auto r = py_detvec.value().mutable_unchecked<1>();
+    arr = &r[0];
+    arr_len = r.size();
   }
+  else
+  {
+    int ret = readdetfile(indetfile, detvec_local);
+    if(ret)
+      return ret;
+    arr = &detvec_local[0];
+    arr_len = detvec_local.size();
+  }
+  std::span<det_OC_index> detvec{arr, arr_len};
+  sort(detvec.begin(), detvec.end(), early_det_OC_index());
 
   // Get image information.
   if(inimfile.size()>0)
