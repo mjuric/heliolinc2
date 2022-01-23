@@ -112,6 +112,7 @@ public:
     std::strncpy(this->idstring, idstring.c_str(), sizeof(this->idstring));
     this->idstring[sizeof(this->idstring)-1] = 0;
   }
+  det_OC_index() = default;
 };
 
 class xy_index{ // Double-precision x,y point plus long index

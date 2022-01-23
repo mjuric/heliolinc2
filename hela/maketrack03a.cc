@@ -49,7 +49,30 @@ namespace py = pybind11;
 #define IMAGERAD 2.0 // radius from image center to most distant corner (deg)
 
 
-      
+//
+// Extract a column from a structured numpy array, ensuring it's of
+// the desired type. The equivalent of:
+//
+//    foo = arr["foo"].astype(type, copy=False)
+//
+// in Python.
+//
+template<typename T>
+inline auto field(py::array arr, const char *name)
+{
+  using namespace pybind11::literals;
+  auto dtype = py::dtype::of<T>();
+  return arr[name].attr("astype")(dtype, "copy"_a=false).template cast<py::array_t<T>>().template unchecked<1>();
+}
+
+// A marginally simpler way to call field given the variable into
+// which its elements will be stored.
+template<typename T>
+inline auto field_for(py::array arr, T foo, const char *name)
+{
+  return field<T>(arr, name);
+}
+
 static void show_usage()
 {
   cerr << "Usage: maketrack03a -dets detfile -imgs imfile -outimgs output image file/ \n";
@@ -62,68 +85,7 @@ static void show_usage()
   cerr << "set to defaults that may not be what you want.\n";
 }
 
-int readdetfile(const std::string &indetfile, std::vector<det_OC_index> &detvec)
-{
-  long double MJD,RA,Dec;
-  std::string lnfromfile;
-  string idstring;
-  ifstream instream1 {indetfile};
-  int reachedeof = 0;
-  long lct=0;
-
-  if(!instream1) {
-    cerr << "can't open input file " << indetfile << "\n";
-    return(1);
-  }
-  // Skip one-line header
-  getline(instream1,lnfromfile);
-  lct++;
-  cout << lnfromfile << "\n";
-  while(reachedeof==0) {
-    getline(instream1,lnfromfile);
-    lct++;
-    if(!instream1.eof() && !instream1.fail() && !instream1.bad()) ; // Read on.
-    else if(instream1.eof()) reachedeof=1; //End of file, fine.
-    else if(instream1.fail()) reachedeof=-1; //Something wrong, warn
-    else if(instream1.bad()) reachedeof=-2; //Worse problem, warn
-    int i=0;
-    int j = 0;
-    int c='0';
-    while(i<lnfromfile.size() && reachedeof == 0) {
-      string stest;
-      c='0';
-      while(i<lnfromfile.size() && c!=',' && c!='\n' && c!=EOF) {
-	c=lnfromfile[i];
-	if(c!=',' && c!='\n' && c!=EOF) stest.push_back(c);
-	i++;
-      }
-      // We just finished reading something
-      j++;
-      if(j==IDCOL) idstring=stest;
-      if(j==MJDCOL) MJD=stold(stest);
-      else if(j==RACOL) RA=stold(stest);
-      else if(j==DECCOL) Dec=stold(stest);
-      // cout<<"Column "<< j << " read as " << stest << ".\n";
-    }
-    if(reachedeof == 0) {
-      // cout<<"MJD, RA, Dec: " << MJD-floor(MJD) << " " << RA << " " << Dec << "\n";
-      det_OC_index o1(MJD,RA,Dec,0L,0L,0L,idstring,-lct);
-      detvec.push_back(o1);
-    }
-  }
-  if(reachedeof==1) { 
-    cout << "File read successfully to the end.\n";
-  }
-  else if(reachedeof==-1) cout << "Warning: file read failed\n";
-  else if(reachedeof==-2) cout << "Warning: file possibly corrupted\n";
-  else cout << "Warning: unknown file read problem\n";
-  // time-sort the detection vector
-  sort(detvec.begin(), detvec.end(), early_det_OC_index());
-
-  return 0;
-}
-
-int maketrack03a(const std::vector<const std::string> &argv, std::optional<py::array_t<det_OC_index, py::array::c_style>> py_detvec)
+int maketrack03a(const std::vector<const std::string> &argv, const py::array &py_detvec)
 {
   const int argc = argv.size();
 
@@ -358,26 +320,32 @@ int maketrack03a(const std::vector<const std::string> &argv, std::optional<py::a
   maxtime/=24.0; /*Unit conversion from hours to days*/
   maxdist = maxtime*maxvel;
 
-  // read detections file
-  vector <det_OC_index> detvec_local = {};
-  det_OC_index *arr = nullptr;
-  size_t arr_len = 0;
-  if(py_detvec.has_value())
+  // copy and sort the detection array
+  vector<det_OC_index> detvec(py_detvec.size());
+  det_OC_index dummy;
+  auto mjd   = field_for(py_detvec, dummy.MJD, "MJD");
+  auto ra    = field_for(py_detvec, dummy.RA, "RA");
+  auto dec   = field_for(py_detvec, dummy.Dec, "Dec");
+  auto idstr = field<decltype(dummy.idstring)>(py_detvec, "idstring");
+  for(int kk = 0; kk != detvec.size(); kk++)
   {
-    auto r = py_detvec.value().mutable_unchecked<1>();
-    arr = &r[0];
-    arr_len = r.size();
+    auto &v = detvec[kk];
+    v.MJD = mjd[kk];
+    v.RA = ra[kk];
+    v.Dec = dec[kk];
+    memcpy(v.idstring, idstr[kk], sizeof(v.idstring));
+    v.index = -2 - kk;
   }
-  else
-  {
-    int ret = readdetfile(indetfile, detvec_local);
-    if(ret)
-      return ret;
-    arr = &detvec_local[0];
-    arr_len = detvec_local.size();
-  }
-  std::span<det_OC_index> detvec{arr, arr_len};
   sort(detvec.begin(), detvec.end(), early_det_OC_index());
+/*
+  for(int kk = 0; kk != 10; kk++)
+  {
+    auto &v = detvec[kk];
+    std::printf("%Lf %Lf %Lf %Lf %Lf %Lf %s %ld\n", v.MJD, v.RA, v.Dec, v.x, v.y, v.z, v.idstring, v.index);
+  }
+
+  return 0;
+*/
 
   // Get image information.
   if(inimfile.size()>0)
