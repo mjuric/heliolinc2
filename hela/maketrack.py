@@ -7,8 +7,7 @@ import argparse
 REAL     = '<f16' # Floating point datatype
 MAXVEL   = 1.5    # Default max angular velocity in deg/day.
 MAXTIME  = 1.5    # Default max inter-image time interval
-                  # for tracklets, in hours (will be converted
-                  # to days before use).
+                  # for tracklets, in hours
 IMAGERAD = 2.0    # radius from image center to most distant corner (deg)
 
 def load_obsv(fn):
@@ -46,8 +45,8 @@ if __name__ == "__main__":
     parser.add_argument("--earth", "-e", required=True, dest="earthfile", type=str, help="Earth coordinates file (JPL HORIZONS format)")
 
     # optional arguments
-    parser.add_argument("--imgs", "--images", "-i", dest="inimfile", type=str, default='', help='Images list file (CSV)')
-    parser.add_argument("--outim", "--outimages", dest="outimfile", type=str, default='', help="Output image file")
+    parser.add_argument("--imgs", "--images", "-i", dest="inimfile", type=str, help='Images list file (CSV)')
+    parser.add_argument("--outim", "--outimages", dest="outimfile", type=str, help="Output image file")
     parser.add_argument("--pairfile", "--pairs", dest="outpairfile", type=str, default="outpairfile01.txt", help="Output pair file")
     parser.add_argument("--pairdet", dest="pairdetfile", type=str, default="pairdetfile01.txt", help="Output pair detections file")
     parser.add_argument("--imrad", dest="imrad", type=positive_float, default=IMAGERAD, help="Image radius (must be positive)")

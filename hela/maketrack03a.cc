@@ -100,13 +100,13 @@ void ndarray_to_detvec(std::vector<det_OC_index> &detvec, const py::array &arr)
 int maketrack03a(
   const py::array &py_detvec,
   const std::string &earthfile,
-  const std::string &inimfile="",
-  const std::string &outimfile="",
+  const std::optional<std::string> inimfile_,
+  const std::optional<std::string> outimfile_,
   const std::string &outpairfile="",
   const std::string &pairdetfile="",
-  const REAL imrad=2.0,		// radius from image center to most distant corner (deg).
-  REAL maxtime=1.5,		// Max time interval a tracklet could span, in days
-  const REAL maxvel=1.5,	// Max angular velocity in deg/day
+  const REAL imrad = 2.0,		// radius from image center to most distant corner (deg).
+  const REAL maxtime_hrs = 1.5,		// Max time interval a tracklet could span, in hours
+  const REAL maxvel = 1.5,		// Max angular velocity in deg/day
   const std::array<REAL, 3> observatory = {289.26345, 0.86502, -0.500901}
 )
 {
@@ -142,12 +142,13 @@ int maketrack03a(
   char c='0';
   long double MJD,RA,Dec;
   MJD = RA = Dec = 0.0L;
-  double maxdist = MAXVEL*MAXTIME/24.0; // Max angular distance a tracklet
-                                   // could span, in degrees.
   long double obslon = observatory[0]; //289.26345L;
   long double plxcos = observatory[1]; //0.865020L;
   long double plxsin = observatory[2]; //-0.500901L;
   long lct=0;
+
+  std::string inimfile  =  inimfile_.has_value() ?  inimfile_.value() : "";
+  std::string outimfile = outimfile_.has_value() ? outimfile_.value() : "";
 
 //  cout << "indet file " << indetfile << "\n";
   cout << "inimage file " << inimfile << "\n";
@@ -156,10 +157,10 @@ int maketrack03a(
   cout << "paired detection file " << pairdetfile << "\n";
   cout << "Heliocentric ephemeris file for the Earth: " << earthfile << "\n";
   cout << "image radius " << imrad << "\n";
-  cout << "max time interval " << maxtime << "\n";
+  cout << "max time interval " << maxtime_hrs << "\n";
   cout << "maxvel " << maxvel << "\n";
-  maxtime/=24.0; /*Unit conversion from hours to days*/
-  maxdist = maxtime*maxvel;
+  REAL maxtime = maxtime_hrs/24.0; /*Unit conversion from hours to days*/
+  double maxdist = maxtime*maxvel; // Max angular distance a tracklet could span, in degrees.
 
   // copy and sort the detection array
   vector<det_OC_index> detvec;
