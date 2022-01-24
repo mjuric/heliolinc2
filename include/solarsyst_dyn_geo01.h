@@ -230,6 +230,7 @@ public:
   long double y;
   long double z;
   point3LD(long double x, long double y, long double z) :x(x), y(y), z(z) { }
+  point3LD() = default;
 };
 
 class point6LDx2{ // Long double-precision 6-D point plus 2 long integer indices

@@ -97,9 +97,31 @@ void ndarray_to_detvec(std::vector<det_OC_index> &detvec, const py::array &arr)
   sort(detvec.begin(), detvec.end(), early_det_OC_index());
 }
 
+void ndarray_to_statevec(const py::array &arr, std::vector<REAL> &mjdvec, std::vector<point3LD> &pos, std::vector<point3LD> &vel)
+{
+  mjdvec.resize(arr.size());
+  pos.resize(arr.size());
+  vel.resize(arr.size());
+
+  auto mjd  = field<REAL>(arr, "MJD");
+  auto x    = field<REAL>(arr, "X");
+  auto y    = field<REAL>(arr, "Y");
+  auto z    = field<REAL>(arr, "Z");
+  auto vx   = field<REAL>(arr, "VX");
+  auto vy   = field<REAL>(arr, "VY");
+  auto vz   = field<REAL>(arr, "VZ");
+
+  for(int i = 0; i != arr.size(); i++)
+  {
+    mjdvec[i] = mjd[i];
+    pos[i] = point3LD( x[i],  y[i],  z[i]);
+    vel[i] = point3LD(vx[i], vy[i], vz[i]);
+  }
+}
+
 int maketrack03a(
   const py::array &py_detvec,
-  const std::string &earthfile,
+  const py::array &earth_sv,
   const std::optional<std::string> inimfile_,
   const std::optional<std::string> outimfile_,
   const std::string &outpairfile="",
@@ -117,10 +139,7 @@ int maketrack03a(
   vector <longpair> pairvec ={};
   point3d p3 = point3d(0,0,0);
   point3d p3avg = point3d(0,0,0);
-  vector <point3LD> Earthpos;
-  vector <point3LD> Earthvel;
   vector <point3LD> observer_heliopos;
-  vector <long double> EarthMJD;
   point3LD outpos = point3LD(0,0,0);
   double tdelt = 0;
   double mjdmean = 0;
@@ -150,12 +169,10 @@ int maketrack03a(
   std::string inimfile  =  inimfile_.has_value() ?  inimfile_.value() : "";
   std::string outimfile = outimfile_.has_value() ? outimfile_.value() : "";
 
-//  cout << "indet file " << indetfile << "\n";
   cout << "inimage file " << inimfile << "\n";
   cout << "output image file " << outimfile << "\n";
   cout << "pairfile file " << outpairfile << "\n";
   cout << "paired detection file " << pairdetfile << "\n";
-  cout << "Heliocentric ephemeris file for the Earth: " << earthfile << "\n";
   cout << "image radius " << imrad << "\n";
   cout << "max time interval " << maxtime_hrs << "\n";
   cout << "maxvel " << maxvel << "\n";
@@ -165,6 +182,12 @@ int maketrack03a(
   // copy and sort the detection array
   vector<det_OC_index> detvec;
   ndarray_to_detvec(detvec, py_detvec);
+
+  // copy the Earth state vectors
+  std::vector<long double> EarthMJD;
+  std::vector<point3LD> Earthpos;
+  std::vector<point3LD> Earthvel;
+  ndarray_to_statevec(earth_sv, EarthMJD, Earthpos, Earthvel);
 
   // Get image information.
   if(inimfile.size()>0)
@@ -331,12 +354,6 @@ int maketrack03a(
       imct++;
     }
   }
-
-  EarthMJD={};
-  Earthpos={};
-  Earthvel={};
-  read_horizons_fileLD(earthfile,EarthMJD,Earthpos,Earthvel);
-  cout << "Finished reading heliocentric ephemeris file " << earthfile << " for the Earth.\n";
 
   // Test: print out time-sorted detection table.
   ofstream outstream1 {"testjunk01.txt"};

@@ -15,7 +15,7 @@ int add(int i, int j)
 
 int maketrack03a(
   const py::array &py_detvec,
-  const std::string &earthfile,
+  const py::array &earth_sv,
   const std::optional<std::string> inimfile_,
   const std::optional<std::string> outimfile_,
   const std::string &outpairfile="",

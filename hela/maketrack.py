@@ -22,6 +22,39 @@ def load_obsv(fn):
     data = np.loadtxt(fn, usecols=[0, 2, 5, 7], dtype=intype, delimiter=',', skiprows=1)
     return data
 
+def load_horizons_ephems(fn):
+    """ Load Earth ephemerides downloaded from horizons """
+
+    def jpl_file(fn):
+        with open(fn) as fp:
+            # skip the header
+            while True:
+                line = fp.readline()
+                if line == "$$SOE\n": break
+                if line == '': raise EOFError
+
+            # yield lines until we hit $$EOE
+            while True:
+                line = fp.readline()
+                if line == "$$EOE\n": break
+                if line == '': raise EOFError
+                yield line
+
+    MJDOFF=2400000.5
+    data = np.genfromtxt(
+        jpl_file(fn),
+        dtype=[
+                ('MJD', REAL),
+                ('X', REAL), ('Y', REAL), ('Z', REAL),
+                ('VX', REAL), ('VY', REAL), ('VZ', REAL)
+        ],
+        usecols=[0, 2, 3, 4, 5, 6, 7],
+        autostrip=True,
+        delimiter=','
+    )
+    data["MJD"] -= MJDOFF
+    return data
+
 def positive_float(value):
     """ Argument parser support: convert positive nonzero float type """
     fvalue = float(value)
@@ -58,8 +91,9 @@ if __name__ == "__main__":
     print(args)
 
     obsv = load_obsv("../tests/sample.csv")
+    earthsv = load_horizons_ephems("../tests/Earth2hr2020s_01a.csv")
     #hela.dp(data)
     #print(data[0])
     #exit(0)
 
-    hela.maketrack03a(obsv, args.earthfile, args.inimfile, args.outimfile, args.outpairfile, args.pairdetfile, args.imrad, args.maxtime, args.maxvel, args.observatory)
+    hela.maketrack03a(obsv, earthsv, args.inimfile, args.outimfile, args.outpairfile, args.pairdetfile, args.imrad, args.maxtime, args.maxvel, args.observatory)
