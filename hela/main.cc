@@ -13,7 +13,18 @@ int add(int i, int j)
 	return i + j;
 }
 
-int maketrack03a(const std::vector<const std::string> &argv, const py::array &py_detvec);
+int maketrack03a(
+  const py::array &py_detvec,
+  const std::string &earthfile,
+  const std::string &inimfile="",
+  const std::string &outimfile="",
+  const std::string &outpairfile="",
+  const std::string &pairdetfile="",
+  const REAL imrad=2.0,
+  REAL maxtime=1.5,
+  const REAL maxvel=1.5,
+  const std::array<REAL, 3> observatory = {289.26345, 0.86502, -0.500901}
+);
 
 void numpy2detvec(py::array &arr)
 {
@@ -49,6 +60,6 @@ PYBIND11_MODULE(hela, m)
 	PYBIND11_NUMPY_DTYPE(det_OC_index, MJD, RA, Dec, x, y, z, idstring, index);
 
 	m.def("add", &add, "A function that adds two numbers");
-	m.def("maketrack03a", &maketrack03a, "The maketracks function", py::arg("argv"), py::arg("detvec"));
+	m.def("maketrack03a", &maketrack03a, "The maketracks function");
 	m.def("dp", &numpy2detvec, "Test fun");
 }

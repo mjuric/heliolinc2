@@ -97,23 +97,19 @@ void ndarray_to_detvec(std::vector<det_OC_index> &detvec, const py::array &arr)
   sort(detvec.begin(), detvec.end(), early_det_OC_index());
 }
 
-static void show_usage()
+int maketrack03a(
+  const py::array &py_detvec,
+  const std::string &earthfile,
+  const std::string &inimfile="",
+  const std::string &outimfile="",
+  const std::string &outpairfile="",
+  const std::string &pairdetfile="",
+  const REAL imrad=2.0,		// radius from image center to most distant corner (deg).
+  REAL maxtime=1.5,		// Max time interval a tracklet could span, in days
+  const REAL maxvel=1.5,	// Max angular velocity in deg/day
+  const std::array<REAL, 3> observatory = {289.26345, 0.86502, -0.500901}
+)
 {
-  cerr << "Usage: maketrack03a -dets detfile -imgs imfile -outimgs output image file/ \n";
-  cerr << "-pairs pairfile -pairdets paired detection file/ \n";
-  cerr << "-imrad image radius(deg) -maxtime max inter-image time interval (hr)/ \n";
-  cerr << "-maxvel maximum angular velocity (deg/day) -earth earthfile -obscoords lon plxcos plxsin\n";
-  cerr << "\nor, at minimum\n\n";
-  cerr << "maketrack03a -dets detfile -earth earthfile\n";
-  cerr << "Note well that the minimum invocation will leave a bunch of things\n";
-  cerr << "set to defaults that may not be what you want.\n";
-}
-
-int maketrack03a(const std::vector<const std::string> &argv, const py::array &py_detvec)
-{
-  const int argc = argv.size();
-
-  det_OC_index o1 = det_OC_index(0L,0L,0L,0L,0L,0L,"null",0);
   vector <det_OC_index> pairdets = {};
   img_log02 imlog = img_log02(0.0,0.0,0.0,0,0);
   vector <img_log02> img_log = {};
@@ -146,193 +142,14 @@ int maketrack03a(const std::vector<const std::string> &argv, const py::array &py
   char c='0';
   long double MJD,RA,Dec;
   MJD = RA = Dec = 0.0L;
-  double maxvel = MAXVEL; // Max angular velocity in deg/day
-  double maxtime = MAXTIME; // Max time interval a tracklet could span,
-                            // in days.
   double maxdist = MAXVEL*MAXTIME/24.0; // Max angular distance a tracklet
                                    // could span, in degrees.
-  double imrad = IMAGERAD; // radius from image center to most distant corner (deg).
-  string indetfile;
-  string inimfile;
-  string outimfile;
-  string earthfile;
-  string outpairfile="outpairfile01.txt";
-  string pairdetfile="pairdetfile01.txt";
-  long double obslon = 289.26345L;
-  long double plxcos = 0.865020L;
-  long double plxsin = -0.500901L;
+  long double obslon = observatory[0]; //289.26345L;
+  long double plxcos = observatory[1]; //0.865020L;
+  long double plxsin = observatory[2]; //-0.500901L;
   long lct=0;
 
-  if(argc<5)
-    {
-      show_usage();
-      return(1);
-    }
-  
-  i=1;
-  while(i<argc) {
-    cout << "Checking out argv[" << i << "] = " << argv[i] << ".\n";
-    if(string(argv[i]) == "-d" || string(argv[i]) == "-dets" || string(argv[i]) == "-det" || string(argv[i]) == "--dets" || string(argv[i]) == "--det" || string(argv[i]) == "--detection" || string(argv[i]) == "--detections") {
-      if(i+1 < argc) {
-	//There is still something to read;
-	indetfile=argv[++i];
-	i++;
-      }
-      else {
-	cerr << "Detection file keyword supplied with no corresponding argument\n";
-	show_usage();
-	return(1);
-      }
-    } else if(string(argv[i]) == "-i" || string(argv[i]) == "-imgs" || string(argv[i]) == "-img" || string(argv[i]) == "--imgs" || string(argv[i]) == "--img" || string(argv[i]) == "--image" || string(argv[i]) == "--images") {
-      if(i+1 < argc) {
-	//There is still something to read;
-	inimfile=argv[++i];
-	i++;
-      }
-      else {
-	cerr << "Image file keyword supplied with no corresponding argument\n";
-	show_usage();
-	return(1);
-      }
-    } else if(string(argv[i]) == "-outim" || string(argv[i]) == "-outimg" || string(argv[i]) == "-outimgs" || string(argv[i]) == "--outimages" || string(argv[i]) == "--outimage" || string(argv[i]) == "--outimgs" || string(argv[i]) == "--outimg") {
-      if(i+1 < argc) {
-	//There is still something to read;
-	outimfile=argv[++i];
-	i++;
-      }
-      else {
-	cerr << "Output image file keyword supplied with no corresponding argument\n";
-	show_usage();
-	return(1);
-      }
-    } else if(string(argv[i]) == "-pairs" || string(argv[i]) == "-pairfile") {
-      if(i+1 < argc) {
-	//There is still something to read;
-	outpairfile=argv[++i];
-	i++;
-      }
-      else {
-	cerr << "Output pair file keyword supplied with no corresponding argument\n";
-	show_usage();
-	return(1);
-      }
-    } else if(string(argv[i]) == "-pairdet" || string(argv[i]) == "-pairdets" || string(argv[i]) == "-detpairs") {
-      if(i+1 < argc) {
-	//There is still something to read;
-        pairdetfile=argv[++i];
-	i++;
-      }
-      else {
-	cerr << "Output paired detection file keyword supplied with no corresponding argument\n";
-	show_usage();
-	return(1);
-      }
-    } else if(string(argv[i]) == "-imrad") {
-      if(i+1 < argc) {
-	//There is still something to read;
-        imrad=stod(argv[++i]);
-	i++;
-	if(!isnormal(imrad) || imrad<=0.0) {
-	  cerr << "Error: invalid image radius (" << imrad << " deg) supplied.\n";
-	  cerr << "Image radius must be strictly positive!\n";
-	  return(2);
-	}
-      }
-      else {
-	cerr << "Output image radius keyword supplied with no corresponding argument\n";
-	show_usage();
-	return(1);
-      }
-    } else if(string(argv[i]) == "-maxtime") {
-      if(i+1 < argc) {
-	//There is still something to read;
-        maxtime=stod(argv[++i]);
-	i++;
-	if(!isnormal(maxtime) || maxtime<=0.0) {
-	  cerr << "Error: invalid maximum inter-image time interval\n";
-	  cerr << "(" << maxtime << " hr) supplied: must be strictly positive.\n";
-	  return(2);
-	}      
-      } else {
-	cerr << "Output maximum inter-image time interval\nkeyword supplied with no corresponding argument\n";
-	show_usage();
-	return(1);
-      }
-    } else if(string(argv[i]) == "-maxvel") {
-      if(i+1 < argc) {
-	//There is still something to read;
-        maxtime=stod(argv[++i]);
-	i++;
-	if(!isnormal(maxvel) || maxvel<=0.0) {
-	  cerr << "Error: invalid maximum angular velocity\n";
-	  cerr << "(" << maxvel << "deg/day) supplied: must be strictly positive.\n";
-	  return(2);
-	}
-      }
-      else {
-	cerr << "Output maximum inter-image time interval\nkeyword supplied with no corresponding argument\n";
-	show_usage();
-	return(1);
-      }
-    } else if(string(argv[i]) == "-earth" || string(argv[i]) == "-e" || string(argv[i]) == "-Earth" || string(argv[i]) == "--earthfile" || string(argv[i]) == "--Earthfile" || string(argv[i]) == "--earth" || string(argv[i]) == "--Earth") {
-      if(i+1 < argc) {
-	//There is still something to read;
-	earthfile=argv[++i];
-	i++;
-      }
-      else {
-	cerr << "Earth file keyword supplied with no corresponding argument\n";
-	show_usage();
-	return(1);
-      }
-    }  else if(string(argv[i]) == "-o" || string(argv[i]) == "-obs" || string(argv[i]) == "-obscoords" || string(argv[i]) == "-obs" || string(argv[i]) == "--obscoords" || string(argv[i]) == "--observatory" || string(argv[i]) == "--observatorycoords") {
-      if(i+1 < argc) {
-	//There is still something to read;
-	obslon=stod(argv[++i]);
-      }
-      else {
-	cerr << "Observatory coordinates keyword supplied with no corresponding argument\n";
-	show_usage();
-	return(1);
-      }
-      if(i+1 < argc) {
-	//There is still something to read;
-	plxcos=stod(argv[++i]);
-      }
-      else {
-	cerr << "Observatory coordinates keyword supplied with only one of the three required arguments\n";
-	show_usage();
-	return(1);
-      }
-      if(i+1 < argc) {
-	//There is still something to read;
-	plxsin=stod(argv[++i]);
-	i++;
-      }
-      else {
-	cerr << "Observatory coordinates keyword supplied with only two of the three required arguments\n";
-	show_usage();
-	return(1);
-      }
-    } else {
-      cerr << "Warning: unrecognized keyword " << argv[i] <<"\n";
-      i++;
-    }
-  }
-
-  if(indetfile.size()<=0) {
-    cerr << "Please supply an input detection file:\n\n";
-    show_usage();
-    return(1);
-  }
-
-  if(earthfile.size()<=0) {
-    cerr << "Please supply a heliocentric ephemeris file for the Earth:\n\n";
-    show_usage();
-    return(1);
-  }
-  
-  cout << "indet file " << indetfile << "\n";
+//  cout << "indet file " << indetfile << "\n";
   cout << "inimage file " << inimfile << "\n";
   cout << "output image file " << outimfile << "\n";
   cout << "pairfile file " << outpairfile << "\n";
