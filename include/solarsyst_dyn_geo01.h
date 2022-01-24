@@ -106,6 +106,7 @@ public:
   REAL z;
   char idstring[20];	// use a POD type so we can map this to a numpy array
   long index;
+
   det_OC_index(REAL mjd, REAL ra, REAL dec, REAL x, REAL y, REAL z, const string &idstring, long index) :MJD(mjd), RA(ra), Dec(dec), x(x), y(y), z(z), index(index)
   {
     assert(idstring.size() < sizeof(this->idstring));
@@ -113,6 +114,13 @@ public:
     this->idstring[sizeof(this->idstring)-1] = 0;
   }
   det_OC_index() = default;
+
+  std::ostream &operator<<(std::ostream &out)
+  {
+    char buf[1024];
+    std::snprintf(buf, sizeof(buf), "%Lf %Lf %Lf %Lf %Lf %Lf %s %ld\n", MJD, RA, Dec, x, y, z, idstring, index);
+    return out << buf;
+  }
 };
 
 class xy_index{ // Double-precision x,y point plus long index

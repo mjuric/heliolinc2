@@ -65,12 +65,36 @@ inline auto field(py::array arr, const char *name)
   return arr[name].attr("astype")(dtype, "copy"_a=false).template cast<py::array_t<T>>().template unchecked<1>();
 }
 
-// A marginally simpler way to call field given the variable into
+// A (marginally) simpler way to call field given the variable into
 // which its elements will be stored.
 template<typename T>
 inline auto field_for(py::array arr, T foo, const char *name)
 {
   return field<T>(arr, name);
+}
+
+void ndarray_to_detvec(std::vector<det_OC_index> &detvec, const py::array &arr)
+{
+  detvec.resize(arr.size());
+
+  det_OC_index dummy;
+  auto mjd   = field_for(arr, dummy.MJD, "MJD");
+  auto ra    = field_for(arr, dummy.RA, "RA");
+  auto dec   = field_for(arr, dummy.Dec, "Dec");
+  auto idstr = field<decltype(dummy.idstring)>(arr, "idstring");
+
+  for(int kk = 0; kk != detvec.size(); kk++)
+  {
+    auto &v = detvec[kk];
+
+    v.MJD   = mjd[kk];
+    v.RA    = ra[kk];
+    v.Dec   = dec[kk];
+    memcpy(v.idstring, idstr[kk], sizeof(v.idstring));
+
+    v.index = -2 - kk;
+  }
+  sort(detvec.begin(), detvec.end(), early_det_OC_index());
 }
 
 static void show_usage()
@@ -321,31 +345,8 @@ int maketrack03a(const std::vector<const std::string> &argv, const py::array &py
   maxdist = maxtime*maxvel;
 
   // copy and sort the detection array
-  vector<det_OC_index> detvec(py_detvec.size());
-  det_OC_index dummy;
-  auto mjd   = field_for(py_detvec, dummy.MJD, "MJD");
-  auto ra    = field_for(py_detvec, dummy.RA, "RA");
-  auto dec   = field_for(py_detvec, dummy.Dec, "Dec");
-  auto idstr = field<decltype(dummy.idstring)>(py_detvec, "idstring");
-  for(int kk = 0; kk != detvec.size(); kk++)
-  {
-    auto &v = detvec[kk];
-    v.MJD = mjd[kk];
-    v.RA = ra[kk];
-    v.Dec = dec[kk];
-    memcpy(v.idstring, idstr[kk], sizeof(v.idstring));
-    v.index = -2 - kk;
-  }
-  sort(detvec.begin(), detvec.end(), early_det_OC_index());
-/*
-  for(int kk = 0; kk != 10; kk++)
-  {
-    auto &v = detvec[kk];
-    std::printf("%Lf %Lf %Lf %Lf %Lf %Lf %s %ld\n", v.MJD, v.RA, v.Dec, v.x, v.y, v.z, v.idstring, v.index);
-  }
-
-  return 0;
-*/
+  vector<det_OC_index> detvec;
+  ndarray_to_detvec(detvec, py_detvec);
 
   // Get image information.
   if(inimfile.size()>0)
