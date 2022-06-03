@@ -1,6 +1,6 @@
 PYINCLUDES = $(shell python3 -m pybind11 --includes) 
 PYEXTSUFFIX = $(shell python3-config --extension-suffix)
-PLATFORMLDFLAGS = -undefined dynamic_lookup 
+##PLATFORMLDFLAGS = -undefined dynamic_lookup 
 
 # $(CXX) -shared $(CXXFLAGS) $(CPPFLAGS) -std=gnu++17 $(PLATFORMFLAGS) $(PYINCLUDES) example.cc -o example$(PYEXTSUFFIX)
 
@@ -11,8 +11,10 @@ MODULE = hela$(PYEXTSUFFIX)
 .PHONY: all
 all: $(MODULE)
 
+##$(MODULE): $(SOURCES:%.cc=%.o)
+##	$(CXX) -shared $(PLATFORMLDFLAGS) -fPIC $(LDFLAGS) -install_name "@rpath/$(MODULE)" $(OUTPUT_OPTION) $^
 $(MODULE): $(SOURCES:%.cc=%.o)
-	$(CXX) -shared $(PLATFORMLDFLAGS) -fPIC $(LDFLAGS) -install_name "@rpath/$(MODULE)" $(OUTPUT_OPTION) $^
+	$(CXX) -shared $(PLATFORMLDFLAGS) -fPIC $(LDFLAGS) $(OUTPUT_OPTION) $^
 
 clean:
 	rm -f $(SOURCES:%.cc=%.o)
@@ -24,7 +26,7 @@ POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d && touch $@
 
 %.o : %.cc
 %.o : %.cc $(DEPDIR)/%.d | $(DEPDIR)
-	$(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) $(PYINCLUDES) -I../include -std=gnu++2a -c $(OUTPUT_OPTION) $<
+	$(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) $(PYINCLUDES) -fPIC -I../include -std=gnu++2a -c $(OUTPUT_OPTION) $<
 	$(POSTCOMPILE)
 
 $(DEPDIR): ; @mkdir -p $@

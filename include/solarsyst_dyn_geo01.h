@@ -21,6 +21,7 @@
 #include <random>
 #include <stdexcept>
 #include <cstdio>
+#include <cassert>
 
 using namespace std;
 

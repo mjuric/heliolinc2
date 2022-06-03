@@ -8,7 +8,8 @@
 PROGRAMS = maketrack03a projectpairs04b projectpairs04c
 
 # List all the common library sources here
-LIB = libhela.dylib
+##LIB = libhela.dylib
+LIB = libhela.so
 LIB_SOURCES = solarsyst_dyn_geo01.cpp
 
 ##
@@ -34,11 +35,15 @@ install: $(LIB) $(PROGRAMS)
 	cp -p $(LIB) $(PREFIX)/lib
 	cp -p $(PROGRAMS) $(PREFIX)/bin
 
-$(PROGRAMS): %: %.o libhela.dylib
-	$(CXX) -L. -lhela -Wl,-rpath,.,-rpath,"@loader_path/../lib" -o $@ $<
+##$(PROGRAMS): %: %.o libhela.dylib
+##	$(CXX) -L. -lhela -Wl,-rpath,.,-rpath,"@loader_path/../lib" -o $@ $<
+$(PROGRAMS): %: %.o libhela.so
+	$(CXX) -L. -lhela -Wl,-rpath=$$ORIGIN/../lib -o $@ $<
 
+##$(LIB): $(LIB_SOURCES:%.cpp=%.o)
+##	$(CXX) -dynamiclib -fPIC $(LDFLAGS) -install_name "@rpath/$(LIB)" $(OUTPUT_OPTION) $^
 $(LIB): $(LIB_SOURCES:%.cpp=%.o)
-	$(CXX) -dynamiclib -fPIC $(LDFLAGS) -install_name "@rpath/$(LIB)" $(OUTPUT_OPTION) $^
+	$(CXX) -shared -fPIC $(LDFLAGS) $(OUTPUT_OPTION) $^
 
 clean:
 	rm -f $(PROGRAMS) $(SOURCES:%.cpp=%.o)
@@ -50,7 +55,7 @@ POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d && touch $@
 
 %.o : %.cpp
 %.o : %.cpp $(DEPDIR)/%.d | $(DEPDIR)
-	$(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -std=gnu++17 -I../include -c $(OUTPUT_OPTION) $<
+	$(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -fPIC -std=gnu++17 -I../include -c $(OUTPUT_OPTION) $<
 	$(POSTCOMPILE)
 
 $(DEPDIR): ; @mkdir -p $@
